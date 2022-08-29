@@ -39,22 +39,42 @@ func newWorker() interface{} {
 
 func (w *worker) run() {
 	go func() {
+		var spinTimes int32
+		var enterSpin bool
 		for {
 			var t *task
-			w.pool.taskLock.Lock()
-			if w.pool.taskHead != nil {
-				t = w.pool.taskHead
-				w.pool.taskHead = w.pool.taskHead.next
-				atomic.AddInt32(&w.pool.taskCount, -1)
+			if atomic.LoadInt32(&w.pool.taskCount) > 0 {
+				w.pool.taskLock.Lock()
+				if w.pool.taskHead != nil {
+					t = w.pool.taskHead
+					w.pool.taskHead = w.pool.taskHead.next
+					atomic.AddInt32(&w.pool.taskCount, -1)
+				}
+				w.pool.taskLock.Unlock()
 			}
 			if t == nil {
-				// if there's no task to do, exit
+				// if there's no task to do, spin for MaxSpinTimes times and then close if still no task.
+				if spinTimes < w.pool.config.MaxSpinTimes {
+					if spinTimes == 0 && w.shouldEnterSpin() {
+						enterSpin = true
+					}
+					if enterSpin {
+						spinTimes++
+						continue
+					}
+				}
+				if enterSpin {
+					atomic.AddInt32(&w.pool.spinWorkerCount, -1)
+				}
 				w.close()
-				w.pool.taskLock.Unlock()
 				w.Recycle()
 				return
 			}
-			w.pool.taskLock.Unlock()
+			if enterSpin {
+				atomic.AddInt32(&w.pool.spinWorkerCount, -1)
+			}
+			spinTimes = 0
+			enterSpin = false
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
@@ -71,6 +91,15 @@ func (w *worker) run() {
 			t.Recycle()
 		}
 	}()
+}
+
+func (w *worker) shouldEnterSpin() bool {
+	if current := atomic.LoadInt32(&w.pool.spinWorkerCount); current+1 <= w.pool.config.MaxSpinWorkers {
+		if atomic.CompareAndSwapInt32(&w.pool.spinWorkerCount, current, current+1) {
+			return true
+		}
+	}
+	return false
 }
 
 func (w *worker) close() {

@@ -86,6 +86,9 @@ type pool struct {
 	// Record the number of running workers
 	workerCount int32
 
+	// Indicate the number of spin workers
+	spinWorkerCount int32
+
 	// This method will be called when the worker panic
 	panicHandler func(context.Context, interface{})
 }

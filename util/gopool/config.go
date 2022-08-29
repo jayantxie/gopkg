@@ -16,6 +16,8 @@ package gopool
 
 const (
 	defaultScalaThreshold = 1
+	defaultMaxSpinTimes   = 1000
+	defaultMaxSpinWorkers = 1
 )
 
 // Config is used to config pool.
@@ -24,12 +26,18 @@ type Config struct {
 	// new goroutine is created if len(task chan) > ScaleThreshold.
 	// defaults to defaultScalaThreshold.
 	ScaleThreshold int32
+	// max spin times for an idle goroutine.
+	MaxSpinTimes int32
+	// max spin workers of a pool.
+	MaxSpinWorkers int32
 }
 
 // NewConfig creates a default Config.
 func NewConfig() *Config {
 	c := &Config{
 		ScaleThreshold: defaultScalaThreshold,
+		MaxSpinTimes:   defaultMaxSpinTimes,
+		MaxSpinWorkers: defaultMaxSpinWorkers,
 	}
 	return c
 }
