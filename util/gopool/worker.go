@@ -16,6 +16,7 @@ package gopool
 
 import (
 	"fmt"
+	"runtime"
 	"runtime/debug"
 	"sync"
 	"sync/atomic"
@@ -60,6 +61,7 @@ func (w *worker) run() {
 					}
 					if enterSpin {
 						spinTimes++
+						runtime.Gosched()
 						continue
 					}
 				}
@@ -94,12 +96,13 @@ func (w *worker) run() {
 }
 
 func (w *worker) shouldEnterSpin() bool {
-	if current := atomic.LoadInt32(&w.pool.spinWorkerCount); current+1 <= w.pool.config.MaxSpinWorkers {
-		if atomic.CompareAndSwapInt32(&w.pool.spinWorkerCount, current, current+1) {
-			return true
-		}
-	}
-	return false
+	//if current := atomic.LoadInt32(&w.pool.spinWorkerCount); current+1 <= w.pool.config.MaxSpinWorkers {
+	//	if atomic.CompareAndSwapInt32(&w.pool.spinWorkerCount, current, current+1) {
+	//		return true
+	//	}
+	//}
+	//return false
+	return atomic.CompareAndSwapInt32(&w.pool.spinWorkerCount, 0, 1)
 }
 
 func (w *worker) close() {

@@ -16,7 +16,7 @@ package gopool
 
 const (
 	defaultScalaThreshold = 1
-	defaultMaxSpinTimes   = 1000
+	defaultMaxSpinTimes   = 1
 	defaultMaxSpinWorkers = 1
 )
 
@@ -29,6 +29,7 @@ type Config struct {
 	// max spin times for an idle goroutine.
 	MaxSpinTimes int32
 	// max spin workers of a pool.
+	// 动态调整？？
 	MaxSpinWorkers int32
 }
 
